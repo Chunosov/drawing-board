@@ -12,8 +12,7 @@ export default class Server implements Party.Server {
       `\n  url: ${new URL(ctx.request.url).pathname}`
     );
 
-    return onConnect(conn, this.room, {
-    });
+    return onConnect(conn, this.room, {});
   }
 }
 

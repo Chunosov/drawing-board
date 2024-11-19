@@ -16,56 +16,45 @@ interface DrawCmd {
   points: Point[]
 }
 
-// Let's append all the messages we get into this DOM element
-//const output = document.getElementById("app") as HTMLDivElement;
-
-// Helper function to add a new line to the DOM
-// function add(text: string) {
-//   output.appendChild(document.createTextNode(text));
-//   output.appendChild(document.createElement("br"));
-// }
-
-// A PartySocket is like a WebSocket, except it's a bit more magical.
-// It handles reconnection logic, buffering messages while it's offline, and more.
-// const conn = new PartySocket({
-//   host: PARTYKIT_HOST,
-//   room: "my-new-room",
-// });
-
 const yDoc = new Y.Doc();
 const provider = new YPartyKitProvider(PARTYKIT_HOST, ROOM_NAME, yDoc);
 let penColor = 'blue'
 const lineCap = 'round'
 const penWidth = 4
 const eraserWidth = 30
+const minLineLength = 6
+let smoothLine = true
 let pressed = false
 let mode: 'pen'|'erase'|'pan' = 'pen'
 let timerDraw = false
 let drawPoints = false
 let prevPoint: Point = {x: 0, y: 0}
-let points: {x: number, y: number}[] = []
+let points: Point[] = []
 let offset: Point = {x: 0, y: 0}
 let drawnCmds = 0
 
 let yCmds = yDoc.getArray('commands')
 yCmds.observe(() => {
-  replayCommands(yCmds.length === 0 ? 0: drawnCmds)
+  if (yCmds.length === 0) {
+    ctx.reset()
+    offset = {x: 0, y: 0}
+    drawnCmds = 0
+    return
+  }
+  requestAnimationFrame(() => {
+    replayCommands(drawnCmds)
+  })
 })
 
 function replayCommands(startIndex: number, allClients = false) {
-  requestAnimationFrame(() => {
-    if (startIndex === 0) {
-      ctx?.reset()
+  for (let i = startIndex; i < yCmds.length; i++) {
+    const cmd = yCmds.get(i) as DrawCmd
+    if (cmd.clientId === provider.id && !allClients) {
+      continue
     }
-    for (let i = startIndex; i < yCmds.length; i++) {
-      const cmd = yCmds.get(i) as DrawCmd
-      if (cmd.clientId === provider.id && !allClients) {
-        continue
-      }
-      remoteDraw(cmd)
-    }
-    drawnCmds = yCmds.length
-  })
+    remoteDraw(cmd)
+  }
+  drawnCmds = yCmds.length
 }
 
 const boardElement = document.getElementById("board") as HTMLDivElement
@@ -151,7 +140,7 @@ btnPan.onclick = () => {
   updateCanvasCursor()
 }
 
-// Simulate the case when someone is darwing in one window
+// Simulate the case when someone is drawing in one window
 // Then drag/draw/erase in another window and check if all changes as expected
 const btnTimerDraw = document.getElementById('btn-timer-draw') as HTMLDivElement
 btnTimerDraw.onclick = () => {
@@ -187,7 +176,21 @@ btnDrawPoints.onclick = () => {
   checkButton(btnDrawPoints, drawPoints)
 }
 
+const btnSmoothLine = document.getElementById('btn-smooth-line') as HTMLDivElement
+btnSmoothLine.onclick = () => {
+  smoothLine = !smoothLine
+  checkButton(btnSmoothLine, smoothLine)
+}
+
+const btnRefresh = document.getElementById('btn-refresh') as HTMLDivElement
+btnRefresh.onclick = () => {
+  ctx.reset()
+  ctx.translate(offset.x, offset.y)
+  replayCommands(0, true)
+}
+
 checkButton(btnPen, true)
+checkButton(btnSmoothLine, smoothLine)
 
 function isPainting(): boolean {
   return (mode === 'pen' || mode === 'erase')
@@ -232,15 +235,23 @@ canvas.onpointermove = e => {
     canvasCursor.style.top = `${y-w}px`
 
     if (pressed) {
+      if (smoothLine && Math.hypot(prevPoint.x - x, prevPoint.y - y) < minLineLength) {
+        return
+      }
       processDraw(x, y)
+      prevPoint = {x, y}
     }
   }
 
   if (pressed && mode === 'pan') {
-    offset.x += x - prevPoint.x
-    offset.y += y - prevPoint.y
-    prevPoint = {x, y}
-    replayCommands(0, true)
+    requestAnimationFrame(() => {
+      offset.x += x - prevPoint.x
+      offset.y += y - prevPoint.y
+      prevPoint = {x, y}
+      ctx.reset()
+      ctx.translate(offset.x, offset.y)
+      replayCommands(0, true)
+    })
   }
 }
 
@@ -249,35 +260,38 @@ canvas.onpointerup = e => {
   e.preventDefault()
   if (pressed) {
     if (isPainting()) {
+      const x = e.offsetX
+      const y = e.offsetY
+      processDraw(x, y, true)
       sendDraw()
     }
     pressed = false
   }
 }
 
-canvas.onpointerenter = _ => {
+canvas.onpointerenter = () => {
   if (isPainting()) {
     canvasCursor.style.visibility = 'visible'
   }
 }
 
-canvas.onpointerleave = _ => {
-  canvasCursor.style.visibility = 'hidden'
-  if (pressed) {
-    if (isPainting()) {
-      sendDraw()
-    }
-    pressed = false
+canvas.onpointerleave = () => {
+  if (isPainting()) {
+    canvasCursor.style.visibility = 'hidden'
   }
 }
 
-function processDraw(x: number, y: number) {
+function avgPoint(p1: Point, p2: Point): Point {
+  return {x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2 }
+}
+
+function processDraw(x: number, y: number, lastPoint = false) {
   window.requestAnimationFrame(() => {
     points.push({x: x - offset.x, y: y - offset.y})
-
-    if (points.length > 1) {
-      const prevPos = points[points.length - 2]
-      const curPos = points[points.length - 1]
+    const cnt = points.length
+    if (cnt > 1) {
+      const curPos = points[cnt-1]
+      const prevPos = points[cnt-2]
       const erasing = mode === 'erase'
 
       ctx.beginPath()
@@ -285,64 +299,38 @@ function processDraw(x: number, y: number) {
       ctx.lineCap = lineCap
       ctx.lineWidth = erasing ? eraserWidth : penWidth
       ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over'
-      ctx.moveTo(prevPos.x + offset.x, prevPos.y + offset.y)
-      ctx.lineTo(curPos.x + offset.x, curPos.y + offset.y);
+      if (smoothLine) {
+        const avg = avgPoint(prevPos, curPos)
+        if (cnt === 2) {
+          ctx.moveTo(prevPos.x, prevPos.y)
+          if (lastPoint) {
+            ctx.lineTo(curPos.x, curPos.y);
+          } else {
+            ctx.quadraticCurveTo(curPos.x, curPos.y, avg.x, avg.y)
+          }
+        } else {
+          const prevAvg = avgPoint(points[cnt-3], prevPos)
+          ctx.moveTo(prevAvg.x, prevAvg.y)
+          if (lastPoint) {
+            ctx.quadraticCurveTo(prevPos.x, prevPos.y, curPos.x, curPos.y)
+          } else {
+            ctx.quadraticCurveTo(prevPos.x, prevPos.y, avg.x, avg.y)
+          }
+        }
+      } else {
+        ctx.moveTo(prevPos.x, prevPos.y)
+        ctx.lineTo(curPos.x, curPos.y);
+      }
       ctx.stroke()
 
-      if (drawPoints) {
+      if (drawPoints && !erasing) {
         ctx.beginPath()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'black'
         ctx.ellipse(curPos.x, curPos.y, penWidth, penWidth, 0, 0, Math.PI*2)
         ctx.stroke()
       }
-
-      if (points.length === 10) {
-        sendDraw()
-        points = [curPos]
-      }
     }
-
-    /*
-    if (points.length < 3) {
-      return
-    }
-
-    const prevPos1 = points[points.length - 3]
-    const prevPos2 = points[points.length - 2]
-    const curPos = points[points.length - 1]
-    // const xc = (prevPos2.x + curPos.x) / 2
-    // const yc = (prevPos2.y + curPos.y) / 2
-    // const xc = (prevPos2.x + prevPos1.x) / 2
-    // const yc = (prevPos2.y + prevPos1.y) / 2
-
-    // ctx.font = "16px serif";
-    // ctx.beginPath()
-    // ctx.lineWidth = 1
-    // ctx.strokeStyle = 'black'
-    // ctx.ellipse(prevPos1.x, prevPos1.y, 2*penWidth, 2*penWidth, 0, 0, Math.PI*2)
-    // ctx.fillText(`${points.length - 3}`, prevPos1.x, prevPos1.y)
-    // ctx.strokeStyle = 'red'
-    // ctx.ellipse(prevPos2.x, prevPos2.y, 2*penWidth, 2*penWidth, 0, 0, Math.PI*2)
-    // ctx.fillText(`${points.length - 2}`, prevPos2.x, prevPos2.y)
-    // ctx.stroke()
-
-
-    ctx.beginPath()
-    ctx.strokeStyle = penColor
-    ctx.lineCap = lineCap
-    ctx.lineWidth = erasing ? eraserWidth : penWidth
-    ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over'
-    ctx.moveTo(prevPos1.x, prevPos1.y)
-    //ctx.quadraticCurveTo(prevPos2.x, prevPos2.y, xc, yc);
-    //ctx.quadraticCurveTo(xc, yc, prevPos2.x, prevPos2.y);
-    //ctx.quadraticCurveTo(prevPos2.x, prevPos2.y, curPos.x, curPos.y);
-    ctx.lineTo(prevPos2.x, prevPos2.y);
-    ctx.lineTo(curPos.x, curPos.y);
-    ctx.stroke()
-    ctx.closePath()
-
-    //points = [curPos]*/
   })
 }
 
@@ -373,24 +361,43 @@ function clearDraw() {
 }
 
 function remoteDraw(cmd: DrawCmd) {
+  const cnt = cmd.points.length
+  if (cnt < 2) {
+    return
+  }
   ctx.beginPath()
   ctx.strokeStyle = cmd.penColor
   ctx.lineWidth = cmd.lineWidth
   ctx.lineCap = lineCap
   ctx.globalCompositeOperation = cmd.erasing ? 'destination-out' : 'source-over'
-  ctx.moveTo(cmd.points[0].x + offset.x, cmd.points[0].y + offset.y)
-  for (let i = 1; i < cmd.points.length; i++) {
-    ctx.lineTo(cmd.points[i].x + offset.x, cmd.points[i].y + offset.y);
+  if (cnt === 2) {
+    const curPos = cmd.points[cnt-1]
+    const prevPos = cmd.points[cnt-2]
+    ctx.moveTo(prevPos.x, prevPos.y)
+    ctx.lineTo(curPos.x, curPos.y)
+  } else {
+    for (let i = 1; i < cnt; i++) {
+      const curPos = cmd.points[i]
+      const prevPos = cmd.points[i-1]
+      if (smoothLine) {
+        const avg = avgPoint(prevPos, curPos)
+        if (i === 1) {
+          ctx.moveTo(prevPos.x, prevPos.y)
+          ctx.quadraticCurveTo(curPos.x, curPos.y, avg.x, avg.y)
+        } else {
+          const prevAvg = avgPoint(cmd.points[i-2], prevPos)
+          ctx.moveTo(prevAvg.x, prevAvg.y)
+          if (i === cnt-1) {
+            ctx.quadraticCurveTo(prevPos.x, prevPos.y, curPos.x, curPos.y)
+          } else {
+            ctx.quadraticCurveTo(prevPos.x, prevPos.y, avg.x, avg.y)
+          }
+        }
+      } else {
+        ctx.moveTo(prevPos.x, prevPos.y)
+        ctx.lineTo(curPos.x, curPos.y)
+      }
+    }
   }
-  // ctx.moveTo(cmd.points[0].x, cmd.points[0].y)
-  // for (let i = 1; i < cmd.points.length; i++) {
-  //   ctx.lineTo(cmd.points[i].x, cmd.points[i].y);
-  // }
-
-  // for (let i = 1; i < cmd.points.length-1; i++) {
-  //   const xc = (cmd.points[i].x + cmd.points[i + 1].x) / 2
-  //   const yc = (cmd.points[i].y + cmd.points[i + 1].y) / 2
-  //   ctx.quadraticCurveTo(cmd.points[i].x, cmd.points[i].y, xc, yc);
-  // }
   ctx.stroke()
 }

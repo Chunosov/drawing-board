@@ -10,8 +10,8 @@ body {
 
 #board {
   position: absolute;
-  top: 15px;
-  left: 15px;
+  top: 20px;
+  left: 20px;
   width: 500px;
   height: 750px;
   background: white;
@@ -34,8 +34,8 @@ body {
 
 #dev-toolbar {
   position: absolute;
-  left: 530px;
-  top: 25px;
+  left: 535px;
+  top: 20px;
   display: inline-flex;
   flex-direction: column;
   border: 1px solid silver;
@@ -73,8 +73,16 @@ body {
   box-shadow: 0px 0px 0px 2px steelblue inset;
 }
 
-.btn-separator {
-  width: 16px;
+.btn-separator-h {
+  width: 1px;
+  margin: 4px 8px;
+  border-left: 1px dotted silver;
+}
+
+.btn-separator-v {
+  height: 1px;
+  margin: 8px 4px;
+  border-top: 1px dotted silver;
 }
 
 #canvas-cursor {
@@ -101,22 +109,44 @@ body {
   z-index: 1;
   opacity: 0;
   transition: opacity 1s;
-  font-size: 0.7em;
+  font-size: 0.75em;
   white-space: nowrap;
   box-shadow: 2px 2px 4px 0px rgba(34, 60, 80, 0.2);
 }
 
 .btn-tool .tooltip-top {
-  bottom: 110%;
-  left: 40%;
+  bottom: 130%;
+  left: 5px;
 }
 
 .btn-tool .tooltip-left {
-  right: 110%;
-  bottom: 40%;
+  right: 130%;
+  bottom: 5px;
 }
 
 .btn-tool:hover .tooltip {
   visibility: visible;
   opacity: 1;
+}
+
+.btn-tool .tooltip-top::after {
+  content: " ";
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.btn-tool .tooltip-left::after {
+  content: " ";
+  position: absolute;
+  left: 100%;
+  bottom: 50%;
+  margin-bottom: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent transparent #333;
 }

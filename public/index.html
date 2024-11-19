@@ -29,7 +29,7 @@
           <i class="fa fa-trash"></i>
           <span class="tooltip tooltip-top">Clear canvas</span>
         </div>
-        <div class="btn-separator"></div>
+        <div class="btn-separator-h"></div>
         <div class="btn-tool" id="btn-pen">
           <i class="fa fa-pencil"></i>
           <span class="tooltip tooltip-top">Draw with pen</span>
@@ -42,7 +42,7 @@
           <i class="fa fa-hand-paper-o"></i>
           <span class="tooltip tooltip-top">Pan canvas</span>
         </div>
-        <div class="btn-separator"></div>
+        <div class="btn-separator-h"></div>
         <div class="btn-tool" id="btn-color-red">
           <span class="color-icon" style="background:red"></span>
           <span class="tooltip tooltip-top">Pen color - RED</span>
@@ -71,13 +71,23 @@
       <div id="canvas-cursor"></div>
     </div>
     <div id="dev-toolbar">
+      <div class="btn-tool" id="btn-refresh">
+        <i class="fa fa-refresh"></i>
+        <span class="tooltip tooltip-left">Refresh</span>
+      </div>
+      <div class="btn-separator-v"></div>
       <div class="btn-tool" id="btn-timer-draw">
         <i class="fa fa-clock-o"></i>
         <span class="tooltip tooltip-left">Draw by timer</span>
       </div>
+      <div class="btn-separator-v"></div>
       <div class="btn-tool" id="btn-draw-points">
         <i class="fa fa-circle-o"></i>
         <span class="tooltip tooltip-left">Draw points</span>
+      </div>
+      <div class="btn-tool" id="btn-smooth-line">
+        <i class="fa fa-heart-o"></i>
+        <span class="tooltip tooltip-left">Smooth scribbles</span>
       </div>
     </div>
     <script type="module" src="/dist/client.js"></script>
