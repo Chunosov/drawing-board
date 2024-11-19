@@ -1,4 +1,4 @@
-# drawing-board
+# Drawing board demo
 
 Collaborative drawing board demo app.
 
@@ -6,6 +6,8 @@ Collaborative drawing board demo app.
 - doesn't depend on any UI frameworks, pure HTML
 - based on [PartiKit](https://docs.partykit.io/) web server
 - uses [Yjs](https://github.com/yjs/yjs) as a collaborative framework
+
+Initial project was a stub created as [described](https://docs.partykit.io/quickstart/) via `npm create partykit@latest` then changed as neeeded.
 
 Dev run:
 
@@ -23,6 +25,7 @@ npm run deploy
 # Navigate to the address it shows
 ```
 
+![Screenshot](./screenshot-20241119.png)
 
 ## Links
 

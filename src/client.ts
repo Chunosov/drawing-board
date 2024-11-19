@@ -68,45 +68,14 @@ function replayCommands(startIndex: number, allClients = false) {
   })
 }
 
-/*
-// You can even start sending messages before the connection is open!
-conn.addEventListener("message", (event) => {
-  try {
-    const cmd = JSON.parse(event.data)
-    console.log('DRAW', cmd.cmd)
-    if (cmd.cmd === 'clear') {
-      clearDraw()
-    } else if (cmd.cmd === 'pen') {
-      remoteDraw(cmd)
-    } else if (cmd.cmd === 'init') {
-      remoteInit(cmd)
-    }
-  } catch {
-    console.log(`RECIEVE ${event.data}`);
-  }
-});
-
-// Let's listen for when the connection opens
-// And send a ping every 2 seconds right after
-conn.addEventListener("open", () => {
-  console.log("Connected!", conn.id);
-  // add("Sending a ping every 2 seconds...");
-  // // TODO: make this more interesting / nice
-  // clearInterval(pingInterval);
-  // pingInterval = setInterval(() => {
-  //   conn.send("ping");
-  // }, 1000);
-});
-*/
-
-const mouseOverlay = document.getElementById("mouse-overlay") as HTMLDivElement
+const boardElement = document.getElementById("board") as HTMLDivElement
 const canvas = document.getElementById("board-canvas") as HTMLCanvasElement
-canvas.width = mouseOverlay.clientWidth
-canvas.height = mouseOverlay.clientHeight
-const ctx = canvas.getContext("2d")
+canvas.width = boardElement.clientWidth
+canvas.height = boardElement.clientHeight
+const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
 
-const paintCursor = document.getElementById("paint-cursor") as HTMLDivElement
-updatePaintCursor()
+const canvasCursor = document.getElementById("canvas-cursor") as HTMLDivElement
+updateCanvasCursor()
 
 function checkButton(button: HTMLDivElement, on: boolean) {
   if (on) {
@@ -120,7 +89,7 @@ const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'black']
 for (const color of colors) {
   const button = document.getElementById('btn-color-' + color) as HTMLDivElement
   if (button) {
-    button.addEventListener('click', () => {
+    button.onclick = () => {
       for (const color of colors) {
         const b1 = document.getElementById('btn-color-' + color) as HTMLDivElement
         if (b1) {
@@ -128,23 +97,23 @@ for (const color of colors) {
         }
       }
       penColor = color
-      updatePaintCursor()
+      updateCanvasCursor()
       checkButton(button, true)
-    })
+    }
     if (color === penColor) {
-      updatePaintCursor()
+      updateCanvasCursor()
       checkButton(button, true)
     }
   }
 }
 
 const btnClear = document.getElementById('btn-clear') as HTMLDivElement
-btnClear.addEventListener('click', () => {
+btnClear.onclick = () => {
   clearDraw()
-})
+}
 
 const btnPen = document.getElementById('btn-pen') as HTMLDivElement
-btnPen.addEventListener('click', () => {
+btnPen.onclick = () => {
   if (mode === 'pen') {
     return
   }
@@ -153,11 +122,11 @@ btnPen.addEventListener('click', () => {
   checkButton(btnPen, true)
   checkButton(btnErase, false)
   checkButton(btnPan, false)
-  updatePaintCursor()
-})
+  updateCanvasCursor()
+}
 
 const btnErase = document.getElementById('btn-erase') as HTMLDivElement
-btnErase.addEventListener('click', () => {
+btnErase.onclick = () => {
   if (mode === 'erase') {
     return
   }
@@ -166,11 +135,11 @@ btnErase.addEventListener('click', () => {
   checkButton(btnPen, false)
   checkButton(btnErase, true)
   checkButton(btnPan, false)
-  updatePaintCursor()
-})
+  updateCanvasCursor()
+}
 
 const btnPan = document.getElementById('btn-pan') as HTMLDivElement
-btnPan.addEventListener('click', () => {
+btnPan.onclick = () => {
   if (mode === 'pan') {
     return
   }
@@ -179,68 +148,70 @@ btnPan.addEventListener('click', () => {
   checkButton(btnPen, false)
   checkButton(btnErase, false)
   checkButton(btnPan, true)
-  updatePaintCursor()
-})
+  updateCanvasCursor()
+}
 
-let testT = 0
-const testA = 5
-const testB = 6
-const testD = Math.PI / 2
-let testSize: number
-let testInterval: number
-
+// Simulate the case when someone is darwing in one window
+// Then drag/draw/erase in another window and check if all changes as expected
 const btnTimerDraw = document.getElementById('btn-timer-draw') as HTMLDivElement
-btnTimerDraw.addEventListener('click', () => {
+btnTimerDraw.onclick = () => {
   timerDraw = !timerDraw
   checkButton(btnTimerDraw, timerDraw)
+  let timerId: number|null = null
   if (timerDraw) {
-    testSize = Math.min(canvas.width, canvas.height) * 0.45
+    let t = 0
+    const a = 5
+    const b = 6
+    const d = Math.PI / 2
+    const sz = Math.min(canvas.width, canvas.height) * 0.45
     points = [{
-      x: canvas.width/2 + Math.sin(testA * testT + testD)*testSize,
-      y: canvas.height/2 + Math.cos(testB * testT)*testSize
+      x: canvas.width/2 + Math.sin(a*t + d)*sz,
+      y: canvas.height/2 + Math.cos(b*t)*sz
     }]
-    testInterval = setInterval(() => {
-      testT += 0.01
-      const x = canvas.width/2 + Math.sin(testA * testT + testD)*testSize
-      const y = canvas.height/2 + Math.cos(testB * testT)*testSize
+    timerId = setInterval(() => {
+      t += 0.01
+      const x = canvas.width/2 + Math.sin(a*t + d)*sz
+      const y = canvas.height/2 + Math.cos(b*t)*sz
       processDraw(x, y)
     }, 100);
   } else {
-    clearInterval(testInterval)
+    if (timerId) {
+      clearInterval(timerId)
+    }
   }
-})
+}
 
 const btnDrawPoints = document.getElementById('btn-draw-points') as HTMLDivElement
-btnDrawPoints.addEventListener('click', () => {
+btnDrawPoints.onclick = () => {
   drawPoints = !drawPoints
   checkButton(btnDrawPoints, drawPoints)
-})
+}
 
-btnPen.classList.add('btn-selected')
+checkButton(btnPen, true)
 
 function isPainting(): boolean {
   return (mode === 'pen' || mode === 'erase')
 }
 
-function updatePaintCursor() {
+function updateCanvasCursor() {
   if (isPainting()) {
-    mouseOverlay.style.cursor = 'none'
+    canvas.style.cursor = 'none'
     const erasing = mode === 'erase'
     const w = erasing ? eraserWidth : penWidth*2
-    paintCursor.style.background = erasing ? 'none' : penColor
-    paintCursor.style.border = erasing? '1px solid silver' : 'none'
-    paintCursor.style.width = `${w}px`
-    paintCursor.style.height = `${w}px`
+    canvasCursor.style.background = erasing ? 'none' : penColor
+    canvasCursor.style.border = erasing? '1px solid silver' : 'none'
+    canvasCursor.style.width = `${w}px`
+    canvasCursor.style.height = `${w}px`
   } else if (mode === 'pan') {
-    mouseOverlay.style.cursor = 'move'
+    canvas.style.cursor = 'move'
+  } else {
+    canvas.style.cursor = 'default'
   }
 }
 
-mouseOverlay.addEventListener("mousedown", (e) => {
+canvas.onpointerdown = e => {
+  canvas.setPointerCapture(e.pointerId)
   e.preventDefault()
-  if (!ctx) {
-    return
-  }
   pressed = true
   const x = e.offsetX
   const y = e.offsetY
@@ -248,17 +219,17 @@ mouseOverlay.addEventListener("mousedown", (e) => {
   if (isPainting()) {
     points = [{x: x - offset.x, y: y - offset.y}]
   }
-})
+};
 
-mouseOverlay.addEventListener("mousemove", (e) => {
+canvas.onpointermove = e => {
   e.preventDefault()
   const x = e.offsetX
   const y = e.offsetY
 
   if (isPainting()) {
     const w = (mode === 'erase' ? eraserWidth : penWidth*2)/2
-    paintCursor.style.left = `${x-w}px`
-    paintCursor.style.top = `${y-w}px`
+    canvasCursor.style.left = `${x-w}px`
+    canvasCursor.style.top = `${y-w}px`
 
     if (pressed) {
       processDraw(x, y)
@@ -271,9 +242,10 @@ mouseOverlay.addEventListener("mousemove", (e) => {
     prevPoint = {x, y}
     replayCommands(0, true)
   }
-})
+}
 
-mouseOverlay.addEventListener("mouseup", (e) => {
+canvas.onpointerup = e => {
+  canvas.releasePointerCapture(e.pointerId)
   e.preventDefault()
   if (pressed) {
     if (isPainting()) {
@@ -281,28 +253,25 @@ mouseOverlay.addEventListener("mouseup", (e) => {
     }
     pressed = false
   }
-})
+}
 
-mouseOverlay.addEventListener("mouseenter", (e) => {
+canvas.onpointerenter = _ => {
   if (isPainting()) {
-    paintCursor.style.visibility = 'visible'
+    canvasCursor.style.visibility = 'visible'
   }
-})
+}
 
-mouseOverlay.addEventListener("mouseleave", (e) => {
-  paintCursor.style.visibility = 'hidden'
+canvas.onpointerleave = _ => {
+  canvasCursor.style.visibility = 'hidden'
   if (pressed) {
     if (isPainting()) {
       sendDraw()
     }
     pressed = false
   }
-})
+}
 
 function processDraw(x: number, y: number) {
-  if (!ctx) {
-    return
-  }
   window.requestAnimationFrame(() => {
     points.push({x: x - offset.x, y: y - offset.y})
 
@@ -404,9 +373,6 @@ function clearDraw() {
 }
 
 function remoteDraw(cmd: DrawCmd) {
-  if (!ctx) {
-    return
-  }
   ctx.beginPath()
   ctx.strokeStyle = cmd.penColor
   ctx.lineWidth = cmd.lineWidth
