@@ -1,0 +1,131 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #eee;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#board {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 500px;
+  height: 750px;
+  background: white;
+  border: 1px solid silver;
+  border-radius: 5px;
+  box-shadow: 2px 2px 4px 0px rgba(34, 60, 80, 0.2);
+}
+
+#main-toolbar {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  border: 1px solid silver;
+  background: #eee;
+  border-radius: 5px;
+  padding: 4px 4px;
+  box-shadow: 2px 2px 4px 0px rgba(34, 60, 80, 0.2);
+}
+
+#dev-toolbar {
+  position: absolute;
+  left: 530px;
+  top: 25px;
+  display: inline-flex;
+  flex-direction: column;
+  border: 1px solid silver;
+  background: #eee;
+  border-radius: 5px;
+  padding: 4px 4px;
+  box-shadow: 2px 2px 4px 0px rgba(34, 60, 80, 0.2);
+}
+
+#mouse-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  cursor: none;
+}
+
+#board-canvas{
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.btn-tool  {
+  height: 28px;
+  width: 28px;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 5px;
+  position: relative;
+}
+
+.btn-tool:hover {
+  background-color: white;
+}
+
+.btn-selected {
+  box-shadow: 0px 0px 0px 2px steelblue inset;
+}
+
+.btn-separator {
+  width: 16px;
+}
+
+#paint-cursor {
+  visibility: hidden;
+  position:absolute;
+  border-radius: 50%;
+  cursor: none;
+  pointer-events: none;
+}
+
+.color-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.btn-tool .tooltip {
+  visibility: hidden;
+  background-color: #333;
+  color: #eee;
+  border-radius: 5px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 1s;
+  font-size: 0.7em;
+  white-space: nowrap;
+  box-shadow: 2px 2px 4px 0px rgba(34, 60, 80, 0.2);
+}
+
+.btn-tool .tooltip-top {
+  bottom: 110%;
+  left: 40%;
+}
+
+.btn-tool .tooltip-left {
+  right: 110%;
+  bottom: 40%;
+}
+
+.btn-tool:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
